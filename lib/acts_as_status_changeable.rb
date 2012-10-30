@@ -8,24 +8,29 @@ module ActsAsStatusChangeable
   end
 
   module ClassMethods
-    def acts_as_status_changeable(*statusses)
+    def acts_as_status_changeable(*statuses)
+      raise ArgumentError, "At least one status name is required"
+      raise RuntimeError, "Model table does not exist" unless table_exists?
+
+      statuses = statuses.map(&:to_s)
+
       class_attribute :acts_as_status_changeable_statuses
       self.acts_as_status_changeable_statuses = []
 
-      statusses = statusses.map(&:to_s)
-      raise "Nie podales nazwy statusu, który ma być zapisywany." if statusses.empty?
-      statusses.each do |status|
-        if table_exists? && column_names.include?(status)
-          self.acts_as_status_changeable_statuses << status
-        else
-          Rails.logger.warn "Model nie zawiera kolumny \"'#{status}\""
+      statuses.each do |status|
+        unless column_names.include?(status)
+          raise ArgumentError, "Model table does not contain '#{status}' column"
         end
+
+        self.acts_as_status_changeable_statuses << status
       end
 
       has_many :status_changes, :as => :status_changeable
-      before_save :save_status_change
+      before_save :build_status_changes
 
-      scope :with_past_status, lambda {|status_name, status| {:include => :status_changes, :conditions => {:status_changes => {:status => status.to_s, :status_name => status_name.to_s }}} }
+      scope :with_past_status, lambda { |status_name, status|
+        includes(:status_changes).where(:status_changes => { :status => status.to_s, :status_name => status_name.to_s })
+      }
 
       include InstanceMethods
     end
@@ -48,26 +53,20 @@ module ActsAsStatusChangeable
     #   self.status_date(:status, :active)            # => Mon, 20 Apr 2009 12:12:20 UTC +00:00
     #   self.status_date(:financial_status, :paid)    # => nil
     def status_date(status_name, status)
-      if status_change = self.status_changes.find_by_status_name_and_status(status_name.to_s, status.to_s)
-        return status_change.created_at
-      else
-        return nil
-      end
+      status_changes.order("created_at DESC").where(:status_name => status_name.to_s, :status => status.to_s).first.try(:created_at)
     end
 
     # Looks for changes in any of tracked statuses and builds +status_changes+ instances reflecting those changes.
-    def save_status_change
-      Rails.logger.info("Status changed")
+    def build_status_changes
       self.class.acts_as_status_changeable_statuses.each do |status|
         current_status = self.send(status)
-        if self.send("#{status.to_s}_changed?") # nil jest dla nowego rekordu
+        if self.send("#{status.to_s}_changed?") # nil when new_record?
           self.status_changes.build(:status_changeable_id => self,
-                                                  :status_name => status.to_s,
-                                                  :status => current_status)
+                                    :status_name => status.to_s,
+                                    :status => current_status)
         end
       end
     end
-
   end
 end
 
