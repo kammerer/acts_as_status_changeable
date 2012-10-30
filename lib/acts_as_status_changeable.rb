@@ -33,18 +33,20 @@ module ActsAsStatusChangeable
 
   module InstanceMethods
 
-    # Sprawdza czy obiekt był w podanym statusie i zwraca true/false.
-    # Parametry:
+    # Checks whether object ever was in given status.
+    #
+    # Args:
+    #   status_name [String|Symbol]
     #   status [String|Symbol]
     def was_in_status?(status_name, status)
       status_changes.exists?(:status_name => status_name.to_s, :status => status.to_s)
     end
 
-    # Zwraca datę ostatniej zmiany statusu obiektu o nazwie +status_name+ na +name+ lub +nil+
-    # jeśli nie było zmiany na taki status.
-    # Przykład:
-    #   self.status_date(:status, :activate) # => Mon, 20 Apr 2009 12:12:20 UTC +00:00
-    #   self.status_date(:financial_status, :paid)   # => nil
+    # Returns time of most recent change of +status_name+ attribute to given +status+ (or +nil+).
+    #
+    # Example:
+    #   self.status_date(:status, :active)            # => Mon, 20 Apr 2009 12:12:20 UTC +00:00
+    #   self.status_date(:financial_status, :paid)    # => nil
     def status_date(status_name, status)
       if status_change = self.status_changes.find_by_status_name_and_status(status_name.to_s, status.to_s)
         return status_change.created_at
@@ -53,8 +55,7 @@ module ActsAsStatusChangeable
       end
     end
 
-    # Sprawdza czy kampania zmieniła status i jeśli tak to zapisuje *stary*
-    # status w asocjacji +status_changes+.
+    # Looks for changes in any of tracked statuses and builds +status_changes+ instances reflecting those changes.
     def save_status_change
       Rails.logger.info("Status changed")
       self.class.acts_as_status_changeable_statuses.each do |status|
