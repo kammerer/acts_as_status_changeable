@@ -4,8 +4,8 @@ require File.expand_path('../lib/acts_as_status_changeable/version', __FILE__)
 Gem::Specification.new do |gem|
   gem.authors       = ["Radosław Bułat", "Tomasz Szymczyszyn"]
   gem.email         = ["tomasz.szymczyszyn@adtaily.com"]
-  gem.description   = %q{}
-  gem.summary       = %q{}
+  gem.summary       = %q{Effortless tracking of status changes in models}
+  gem.description   = %q{This gem provides the facility to automatically track history of changes in activerecord models built around the concept of state machine.}
 
   gem.files         = `git ls-files`.split($\)
   gem.test_files    = gem.files.grep(%r{^test/})
