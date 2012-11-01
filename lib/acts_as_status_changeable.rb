@@ -1,5 +1,7 @@
+require "acts_as_status_changeable/migration"
+require "acts_as_status_changeable/status_change"
+
 module ActsAsStatusChangeable
-  VERSION = "0.0.1"
 
   module ClassMethods
     def self.included(base)
@@ -9,10 +11,11 @@ module ActsAsStatusChangeable
 
   module ClassMethods
     def acts_as_status_changeable(*statuses)
-      raise ArgumentError, "At least one status name is required"
+      statuses = statuses.map(&:to_s)
+
+      raise ArgumentError, "At least one status name is required" if statuses.blank?
       raise RuntimeError, "Model table does not exist" unless table_exists?
 
-      statuses = statuses.map(&:to_s)
 
       class_attribute :acts_as_status_changeable_statuses
       self.acts_as_status_changeable_statuses = []
@@ -25,11 +28,12 @@ module ActsAsStatusChangeable
         self.acts_as_status_changeable_statuses << status
       end
 
-      has_many :status_changes, :as => :status_changeable
+      has_many :status_changes, :as => :status_changeable, :class_name => "::ActsAsStatusChangeable::StatusChange"
       before_save :build_status_changes
 
-      scope :with_past_status, lambda { |status_name, status|
-        includes(:status_changes).where(:status_changes => { :status => status.to_s, :status_name => status_name.to_s })
+      scope :with_past_status, lambda { |status_name, statuses|
+        statuses = Array(statuses).collect(&:to_s)
+        includes(:status_changes).where(:status_changes => { :status => statuses, :status_name => status_name.to_s })
       }
 
       include InstanceMethods
@@ -69,4 +73,6 @@ module ActsAsStatusChangeable
     end
   end
 end
+
+ActiveRecord::Base.send(:include, ActsAsStatusChangeable::ClassMethods)
 
