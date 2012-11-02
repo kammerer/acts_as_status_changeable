@@ -3,41 +3,33 @@ require "acts_as_status_changeable/status_change"
 
 module ActsAsStatusChangeable
 
-  module ClassMethods
-    def self.included(base)
-      base.extend(ClassMethods)
-    end
-  end
+  def acts_as_status_changeable(*statuses)
+    statuses = statuses.map(&:to_s)
 
-  module ClassMethods
-    def acts_as_status_changeable(*statuses)
-      statuses = statuses.map(&:to_s)
-
-      raise ArgumentError, "At least one status name is required" if statuses.blank?
-      raise RuntimeError, "Model table does not exist" unless table_exists?
+    raise ArgumentError, "At least one status name is required" if statuses.blank?
+    raise RuntimeError, "Model table does not exist" unless table_exists?
 
 
-      class_attribute :acts_as_status_changeable_statuses
-      self.acts_as_status_changeable_statuses = []
+    class_attribute :acts_as_status_changeable_statuses
+    self.acts_as_status_changeable_statuses = []
 
-      statuses.each do |status|
-        unless column_names.include?(status)
-          raise ArgumentError, "Model table does not contain '#{status}' column"
-        end
-
-        self.acts_as_status_changeable_statuses << status
+    statuses.each do |status|
+      unless column_names.include?(status)
+        raise ArgumentError, "Model table does not contain '#{status}' column"
       end
 
-      has_many :status_changes, :as => :status_changeable, :class_name => "::ActsAsStatusChangeable::StatusChange"
-      before_save :build_status_changes
-
-      scope :with_past_status, lambda { |status_name, statuses|
-        statuses = Array(statuses).collect(&:to_s)
-        includes(:status_changes).where(:status_changes => { :status => statuses, :status_name => status_name.to_s })
-      }
-
-      include InstanceMethods
+      self.acts_as_status_changeable_statuses << status
     end
+
+    has_many :status_changes, :as => :status_changeable, :class_name => "::ActsAsStatusChangeable::StatusChange"
+    before_save :build_status_changes
+
+    scope :with_past_status, lambda { |status_name, statuses|
+      statuses = Array(statuses).collect(&:to_s)
+      includes(:status_changes).where(:status_changes => { :status => statuses, :status_name => status_name.to_s })
+    }
+
+    include InstanceMethods
   end
 
   module InstanceMethods
@@ -74,5 +66,5 @@ module ActsAsStatusChangeable
   end
 end
 
-ActiveRecord::Base.send(:include, ActsAsStatusChangeable::ClassMethods)
+ActiveRecord::Base.extend ActsAsStatusChangeable
 
