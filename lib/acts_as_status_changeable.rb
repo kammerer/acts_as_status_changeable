@@ -7,17 +7,11 @@ module ActsAsStatusChangeable
     statuses = statuses.map(&:to_s)
 
     raise ArgumentError, "At least one status name is required" if statuses.blank?
-    raise RuntimeError, "Model table does not exist" unless table_exists?
-
 
     class_attribute :acts_as_status_changeable_statuses
     self.acts_as_status_changeable_statuses = []
 
     statuses.each do |status|
-      unless column_names.include?(status)
-        raise ArgumentError, "Model table does not contain '#{status}' column"
-      end
-
       self.acts_as_status_changeable_statuses << status
     end
 
